@@ -49,7 +49,13 @@ Refer to technology-specific instruction files:
 - Create reusable components for common UI patterns
 - Keep components focused on a single responsibility
 - Use props for configuration, not duplication
-- Document component APIs with TypeScript types
+- Document component APIs with a TypeScript `Props` interface in the frontmatter of every reusable `.astro` component. Describe the purpose of non-obvious props and their optional/default behavior.
+
+### Comments and documentation
+
+- Write comments to explain intent, design decisions, accessibility constraints, or other non-obvious behavior.
+- Do not use comments to paraphrase markup, Tailwind classes, or straightforward control flow.
+- Keep comments and `Props` documentation current when the component changes.
 
 ## Development Workflow
 
