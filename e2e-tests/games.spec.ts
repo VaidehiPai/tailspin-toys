@@ -24,6 +24,28 @@ test.describe('Game Listing and Navigation', () => {
     });
   });
 
+  test('should paginate the game list with accessible controls', async ({ page }) => {
+    await test.step('Navigate to homepage', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+    });
+
+    await test.step('Verify the first page and next control', async () => {
+      await expect(page.getByTestId('pagination-status')).toHaveText('Page 1 of 4');
+      await expect(page.getByTestId('pagination-previous')).toBeDisabled();
+      await expect(page.getByTestId('pagination-next')).toBeEnabled();
+      await expect(page.locator('[data-testid="game-card"]:visible')).toHaveCount(6);
+    });
+
+    await test.step('Move to the next page', async () => {
+      await page.getByTestId('pagination-next').click();
+      await expect(page.getByTestId('pagination-status')).toHaveText('Page 2 of 4');
+      await expect(page).toHaveURL('/?page=2');
+      await expect(page.getByTestId('pagination-previous')).toBeEnabled();
+      await expect(page.locator('[data-testid="game-card"]:visible')).toHaveCount(6);
+    });
+  });
+
   test('should navigate to correct game details page when clicking on a game', async ({ page }) => {
     let gameId: string | null;
     let gameTitle: string | null;

@@ -91,6 +91,25 @@ const testIdFromValue = (value: string) =>
       <div class="hidden" data-testid="games-empty-state">
         <EmptyState text="No games match the selected filters." />
       </div>
+      <nav class="mt-8 flex items-center justify-center gap-4" aria-label="Game list pagination" data-testid="pagination">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2 font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          data-testid="pagination-previous"
+          aria-label="Previous page"
+        >
+          Previous
+        </button>
+        <span class="text-sm text-slate-300" data-testid="pagination-status" aria-live="polite"></span>
+        <button
+          type="button"
+          class="rounded-lg border border-slate-600 bg-slate-900/50 px-4 py-2 font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          data-testid="pagination-next"
+          aria-label="Next page"
+        >
+          Next
+        </button>
+      </nav>
     </div>
   </div>
 </Layout>
@@ -100,6 +119,13 @@ const testIdFromValue = (value: string) =>
   const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="game-card"]'));
   const grid = document.querySelector<HTMLElement>('[data-testid="games-grid"]');
   const emptyState = document.querySelector<HTMLElement>('[data-testid="games-empty-state"]');
+  const pagination = document.querySelector<HTMLElement>('[data-testid="pagination"]');
+  const previousButton = document.querySelector<HTMLButtonElement>('[data-testid="pagination-previous"]');
+  const nextButton = document.querySelector<HTMLButtonElement>('[data-testid="pagination-next"]');
+  const paginationStatus = document.querySelector<HTMLElement>('[data-testid="pagination-status"]');
+  const pageSize = 6;
+
+  let currentPage = 1;
 
   const syncFilters = () => {
     const url = new URL(window.location.href);
@@ -116,13 +142,22 @@ const testIdFromValue = (value: string) =>
     } else {
       url.searchParams.delete('publisher');
     }
+    if (currentPage > 1) {
+      url.searchParams.set('page', String(currentPage));
+    } else {
+      url.searchParams.delete('page');
+    }
     window.history.replaceState({}, '', url);
 
-    const visibleCards = cards.filter((card) => {
+    const filteredCards = cards.filter((card) => {
       const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(card.dataset.gameCategory ?? '');
       const publisherMatch = !selectedPublisher || card.dataset.gamePublisher === selectedPublisher;
       return categoryMatch && publisherMatch;
     });
+    const totalPages = Math.max(1, Math.ceil(filteredCards.length / pageSize));
+    currentPage = Math.min(Math.max(1, currentPage), totalPages);
+    const pageStart = (currentPage - 1) * pageSize;
+    const visibleCards = filteredCards.slice(pageStart, pageStart + pageSize);
 
     cards.forEach((card) => {
       const shouldShow = visibleCards.includes(card);
@@ -133,7 +168,13 @@ const testIdFromValue = (value: string) =>
       grid.hidden = visibleCards.length === 0;
     }
     if (emptyState) {
-      emptyState.hidden = visibleCards.length !== 0;
+      emptyState.hidden = filteredCards.length !== 0;
+    }
+    if (pagination && previousButton && nextButton && paginationStatus) {
+      pagination.hidden = filteredCards.length === 0;
+      previousButton.disabled = currentPage === 1;
+      nextButton.disabled = currentPage === totalPages;
+      paginationStatus.textContent = `Page ${currentPage} of ${totalPages}`;
     }
   };
 
@@ -141,6 +182,7 @@ const testIdFromValue = (value: string) =>
     const params = new URLSearchParams(window.location.search);
     const categoryValues = params.getAll('category');
     const publisherValue = params.get('publisher') ?? '';
+    currentPage = Number.parseInt(params.get('page') ?? '1', 10) || 1;
 
     if (form) {
       form.querySelectorAll<HTMLInputElement>('input[name="category"]').forEach((input) => {
@@ -157,12 +199,31 @@ const testIdFromValue = (value: string) =>
   };
 
   if (form) {
-    form.addEventListener('change', syncFilters);
+    form.addEventListener('change', () => {
+      currentPage = 1;
+      syncFilters();
+    });
     form.addEventListener('submit', (event) => {
       event.preventDefault();
+      currentPage = 1;
       syncFilters();
     });
   }
+
+  const navigateToPage = (page: number) => {
+    currentPage = page;
+    const url = new URL(window.location.href);
+    if (currentPage > 1) {
+      url.searchParams.set('page', String(currentPage));
+    } else {
+      url.searchParams.delete('page');
+    }
+    window.history.replaceState({}, '', url);
+    syncFilters();
+  };
+
+  previousButton?.addEventListener('click', () => navigateToPage(currentPage - 1));
+  nextButton?.addEventListener('click', () => navigateToPage(currentPage + 1));
 
   initializeFromQuery();
 </script>
