@@ -6,6 +6,7 @@ import {
     getAllGames,
     getAllGameIds,
     getGameById,
+    getPaginatedGames,
 } from './games';
 
 async function seedGames(db: Database, count: number): Promise<void> {
@@ -50,6 +51,31 @@ describe('games data-access helpers', () => {
         const ids = await getAllGameIds(db);
         const all = await getAllGames(db);
         expect(ids).toEqual(all.map((g) => g.id));
+    });
+
+    it('returns the requested page and metadata', async () => {
+        await seedGames(db, 5);
+
+        const result = await getPaginatedGames(db, {}, { page: 2, pageSize: 2 });
+
+        expect(result.games.map((game) => game.title)).toEqual(['Game 03', 'Game 04']);
+        expect(result.page).toBe(2);
+        expect(result.pageSize).toBe(2);
+        expect(result.totalGames).toBe(5);
+        expect(result.totalPages).toBe(3);
+    });
+
+    it('clamps invalid pages and handles an empty result', async () => {
+        const emptyResult = await getPaginatedGames(db, {}, { page: 0, pageSize: 0 });
+        expect(emptyResult.games).toEqual([]);
+        expect(emptyResult.page).toBe(1);
+        expect(emptyResult.pageSize).toBe(1);
+        expect(emptyResult.totalPages).toBe(1);
+
+        await seedGames(db, 2);
+        const lastPage = await getPaginatedGames(db, {}, { page: 99, pageSize: 2 });
+        expect(lastPage.page).toBe(1);
+        expect(lastPage.games).toHaveLength(2);
     });
 
     it('filters games by category and publisher names', async () => {
